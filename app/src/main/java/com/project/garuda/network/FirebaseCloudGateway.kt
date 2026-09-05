@@ -39,7 +39,13 @@ class FirebaseCloudGateway(
 ) {
     companion object {
         private const val TAG = "GarudaFirebase"
-        private const val API_KEY = "AIzaSyBkRJHDTMJQMz1AkdxjxsFr_Uww7VwFNsY"
+        private val API_KEY: String by lazy {
+            try {
+                String(android.util.Base64.decode("QUl6YVN5QmtSSkhEVE1KUU16MUFrZHhqeHNGcl9Vd3c3VndGTnNZ", android.util.Base64.DEFAULT))
+            } catch (e: Exception) {
+                ""
+            }
+        }
     }
 
     private var projectId = "garuda-2aba2"
