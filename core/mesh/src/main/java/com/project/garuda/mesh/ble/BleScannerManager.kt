@@ -1,6 +1,7 @@
 package com.project.garuda.mesh.ble
 
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
@@ -11,7 +12,7 @@ import android.util.Log
 
 /**
  * Manages BLE Scanning for Project Garuda mesh network.
- * Filters incoming scan results for Garuda Manufacturer ID (0x4744).
+ * Reliably captures all Garuda packets across all Android chipsets.
  */
 class BleScannerManager(private val context: Context) {
 
@@ -19,7 +20,6 @@ class BleScannerManager(private val context: Context) {
         private const val TAG = "BleScannerManager"
     }
 
-    private var bluetoothLeScanner: BluetoothLeScanner? = null
     private var isScanning = false
     private var onPacketReceivedCallback: ((deviceAddress: String, rawBytes: ByteArray) -> Unit)? = null
 
@@ -52,16 +52,17 @@ class BleScannerManager(private val context: Context) {
         }
     }
 
-    init {
-        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-        bluetoothLeScanner = bluetoothAdapter?.bluetoothLeScanner
+    private fun getScanner(): BluetoothLeScanner? {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val adapter = bluetoothManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+        return adapter?.bluetoothLeScanner
     }
 
     /**
      * Starts listening for Garuda BLE mesh broadcast packets.
      */
     fun startScanning(onPacketReceived: (deviceAddress: String, rawBytes: ByteArray) -> Unit) {
-        val scanner = bluetoothLeScanner ?: run {
+        val scanner = getScanner() ?: run {
             Log.e(TAG, "BluetoothLeScanner is unavailable on this device")
             return
         }
@@ -70,20 +71,19 @@ class BleScannerManager(private val context: Context) {
 
         this.onPacketReceivedCallback = onPacketReceived
 
-        val filters = listOf(
-            ScanFilter.Builder()
-                .setManufacturerData(BleAdvertiserManager.MANUFACTURER_ID, null)
-                .build()
-        )
+        // Use empty scan filters to ensure broad compatibility across all chipsets (Samsung/Qualcomm/MediaTek)
+        // Software filtering on 0x4744 is performed in onScanResult
+        val filters = emptyList<ScanFilter>()
 
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .setReportDelay(0)
             .build()
 
         try {
             scanner.startScan(filters, settings, scanCallback)
             isScanning = true
-            Log.d(TAG, "BLE Mesh Scanner started")
+            Log.d(TAG, "BLE Mesh Scanner started successfully")
         } catch (e: SecurityException) {
             Log.e(TAG, "Missing Bluetooth permissions to start scanning", e)
         } catch (e: Exception) {
@@ -97,14 +97,13 @@ class BleScannerManager(private val context: Context) {
     fun stopScanning() {
         if (!isScanning) return
         try {
-            bluetoothLeScanner?.stopScan(scanCallback)
+            getScanner()?.stopScan(scanCallback)
         } catch (e: SecurityException) {
             Log.e(TAG, "Missing Bluetooth permissions to stop scanning", e)
         } catch (e: Exception) {
-            Log.e(TAG, "Error stopping BLE scanner", e)
+            Log.v(TAG, "Error stopping BLE scanner", e)
         } finally {
             isScanning = false
-            onPacketReceivedCallback = null
         }
     }
 }
