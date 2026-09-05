@@ -33,7 +33,9 @@ class MeshForegroundService : Service() {
     }
 
     companion object {
+        private const val TAG = "MeshForegroundService"
         const val CHANNEL_ID = "garuda_mesh_channel"
+
         const val NOTIFICATION_ID = 1001
 
         const val ACTION_START_HIGH_ALERT = "ACTION_START_HIGH_ALERT"
