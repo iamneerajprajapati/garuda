@@ -53,9 +53,16 @@ class CitizenViewModel(
     private fun initBleMeshEngine() {
         if (appContext != null) {
             try {
+                // Launch MeshForegroundService to ensure persistent background BLE relaying
+                val serviceIntent = Intent(appContext, MeshForegroundService::class.java).apply {
+                    action = MeshForegroundService.ACTION_START_HIGH_ALERT
+                }
+                androidx.core.content.ContextCompat.startForegroundService(appContext, serviceIntent)
+
                 advertiserManager = BleAdvertiserManager(appContext)
                 scannerManager = BleScannerManager(appContext)
                 meshRelayEngine = MeshRelayEngine(advertiserManager, scannerManager, viewModelScope)
+
 
                 // Listen to live incoming mesh packets over Bluetooth
                 viewModelScope.launch {

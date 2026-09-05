@@ -123,10 +123,34 @@ class MeshForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder = binder
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        android.util.Log.w(TAG, "App swiped away from Recents. Scheduling auto-restart of MeshForegroundService...")
+
+        val restartIntent = Intent(this, MeshRestarterReceiver::class.java).apply {
+            action = MeshRestarterReceiver.ACTION_RESTART_MESH
+        }
+
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
+        } else {
+            android.app.PendingIntent.FLAG_ONE_SHOT
+        }
+
+        val pendingIntent = android.app.PendingIntent.getBroadcast(this, 101, restartIntent, flags)
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as? android.app.AlarmManager
+        alarmManager?.set(
+            android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            android.os.SystemClock.elapsedRealtime() + 1000,
+            pendingIntent
+        )
+    }
+
     override fun onDestroy() {
         stopMeshService()
         super.onDestroy()
     }
+
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
