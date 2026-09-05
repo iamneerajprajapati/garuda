@@ -65,11 +65,46 @@ object GarudaProtocolEncoderDecoder {
     }
 
     /**
+     * Encodes a lightweight [GarudaPacket.TYPE_HEARTBEAT] presence beacon (11 bytes)
+     * fitting comfortably within legacy BLE 31-byte advertisement frames.
+     */
+    fun encodeHeartbeat(deviceHash: Int): ByteArray {
+        val buffer = ByteBuffer.allocate(11).order(ByteOrder.BIG_ENDIAN)
+        buffer.put(GarudaPacket.MAGIC_BYTE_1)
+        buffer.put(GarudaPacket.MAGIC_BYTE_2)
+        buffer.put(GarudaPacket.TYPE_HEARTBEAT)
+        buffer.putInt(deviceHash)
+        buffer.putInt((System.currentTimeMillis() / 1000).toInt())
+        return buffer.array()
+    }
+
+    /**
      * Decodes a raw byte array into a [GarudaPacket].
      * Returns null if magic bytes don't match or CRC16 checksum validation fails.
      */
     fun decode(bytes: ByteArray): GarudaPacket? {
+        if (bytes.size < 11) {
+            return null
+        }
+
+        // Compact Heartbeat Beacon (11 bytes)
         if (bytes.size < GarudaPacket.LEGACY_FRAME_SIZE) {
+            if (bytes[0] == GarudaPacket.MAGIC_BYTE_1 && bytes[1] == GarudaPacket.MAGIC_BYTE_2 && bytes[2] == GarudaPacket.TYPE_HEARTBEAT) {
+                val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN)
+                buffer.get() // M1
+                buffer.get() // M2
+                buffer.get() // Type
+                val devHash = buffer.int
+                val ts = buffer.int
+                return GarudaPacket(
+                    packetType = GarudaPacket.TYPE_HEARTBEAT,
+                    packetId = devHash xor ts,
+                    deviceHash = devHash,
+                    timestamp = ts,
+                    latitude = 0.0,
+                    longitude = 0.0
+                )
+            }
             return null
         }
 

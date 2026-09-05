@@ -72,7 +72,7 @@ class BleScannerManager(private val context: Context) {
 
         val filters = listOf(
             ScanFilter.Builder()
-                .setManufacturerData(BleAdvertiserManager.MANUFACTURER_ID, byteArrayOf())
+                .setManufacturerData(BleAdvertiserManager.MANUFACTURER_ID, null)
                 .build()
         )
 

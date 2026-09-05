@@ -10,6 +10,7 @@ import com.project.garuda.mesh.ble.BleAdvertiserManager
 import com.project.garuda.mesh.ble.BleScannerManager
 import com.project.garuda.mesh.engine.MeshRelayEngine
 import com.project.garuda.mesh.protocol.GarudaPacket
+import com.project.garuda.mesh.protocol.GarudaProtocolEncoderDecoder
 import com.project.garuda.mesh.service.MeshForegroundService
 import com.project.garuda.network.FirebaseCloudGateway
 import com.project.garuda.network.UplinkGatewayManager
@@ -281,21 +282,10 @@ class CitizenViewModel(
         heartbeatJob?.cancel()
         heartbeatJob = viewModelScope.launch {
             while (isActive) {
-                val nowEpoch = (System.currentTimeMillis() / 1000).toInt()
                 val deviceHashInt = (Build.MODEL ?: "GarudaCitizen").hashCode()
-                val heartbeatPacket = GarudaPacket(
-                    packetType = GarudaPacket.TYPE_HEARTBEAT,
-                    packetId = Random.nextInt(10000, 99999),
-                    deviceHash = deviceHashInt,
-                    timestamp = nowEpoch,
-                    latitude = 0.0,
-                    longitude = 0.0,
-                    emergencyType = GarudaPacket.EMERGENCY_NONE,
-                    hopCount = 0,
-                    ttl = 1
-                )
+                val heartbeatBytes = GarudaProtocolEncoderDecoder.encodeHeartbeat(deviceHashInt)
                 try {
-                    meshRelayEngine?.broadcastPacket(heartbeatPacket)
+                    advertiserManager?.startAdvertising(heartbeatBytes)
                 } catch (e: Exception) {
                     Log.v(TAG, "Heartbeat broadcast failed", e)
                 }
